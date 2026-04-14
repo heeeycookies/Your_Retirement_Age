@@ -2,10 +2,11 @@
 
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
-import { Target, TrendingUp, DollarSign, Clock, Lightbulb, Home, BarChart2, CreditCard, Scissors, Mail, RotateCcw, CheckCircle, AlertCircle, Lock } from 'lucide-react'
+import { Target, TrendingUp, DollarSign, Clock, Lightbulb, Home, BarChart2, CreditCard, Scissors, Mail, RotateCcw, CheckCircle, AlertCircle, Lock, ShoppingBag } from 'lucide-react'
 import { WizardInputs, runCalculations } from '@/lib/calculations'
 import { Currency, formatAmount, formatCompact } from '@/lib/currency'
 import { GuiltyPleasures } from './GuiltyPleasures'
+import { PortfolioChart } from './PortfolioChart'
 
 interface ResultsPageProps {
   inputs: WizardInputs
@@ -155,6 +156,16 @@ export function ResultsPage({ inputs, currency, onReset }: ResultsPageProps) {
                 </span>
               </li>
             )}
+            {results.plannedExpenseAmount !== undefined && results.plannedExpenseAmount > 0 && (
+              <li className="flex items-start gap-3 text-sm text-[#3D2008]">
+                <div className="w-5 h-5 bg-[#E1BEE7] border-2 border-[#3D2008] flex-shrink-0 flex items-center justify-center mt-0.5">
+                  <div className="w-1.5 h-1.5 bg-[#3D2008]" />
+                </div>
+                <span>
+                  Your planned expense of <strong>{fa(results.plannedExpenseAmount)}</strong> in ~{results.plannedExpenseYear} year{results.plannedExpenseYear !== 1 ? 's' : ''} is factored into the projection — your portfolio dips at that point and then continues growing.
+                </span>
+              </li>
+            )}
           </ul>
         </div>
 
@@ -224,6 +235,24 @@ export function ResultsPage({ inputs, currency, onReset }: ResultsPageProps) {
           ))}
         </div>
 
+        {/* Planned major expense callout */}
+        {results.plannedExpenseAmount !== undefined && results.plannedExpenseAmount > 0 && (
+          <div className="border-4 border-[#3D2008] p-6 flex gap-4" style={{ background: '#F5EEFF', boxShadow: '4px 4px 0 #3D2008' }}>
+            <div
+              className="w-10 h-10 bg-[#E1BEE7] border-2 border-[#3D2008] flex items-center justify-center flex-shrink-0"
+              style={{ boxShadow: '2px 2px 0 #3D2008' }}
+            >
+              <ShoppingBag className="w-5 h-5 text-[#3D2008]" strokeWidth={2} />
+            </div>
+            <div>
+              <div className="font-pixel text-[10px] text-[#3D2008] tracking-widest uppercase mb-2">Planned Major Expense</div>
+              <p className="text-sm text-[#3D2008] leading-relaxed">
+                A <strong>{fa(results.plannedExpenseAmount)}</strong> expense in ~{results.plannedExpenseYear} year{results.plannedExpenseYear !== 1 ? 's' : ''} is built into your projection. You'll see a dip in the chart at that point — then growth resumes. If you cancel or delay this purchase, your retirement date improves.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Scenario bars */}
         <div className="bg-white border-4 border-[#3D2008] p-6" style={{ boxShadow: '4px 4px 0 #3D2008' }}>
           <h3 className="font-bold text-[#3D2008] mb-4 flex items-center gap-2">
@@ -258,6 +287,9 @@ export function ResultsPage({ inputs, currency, onReset }: ResultsPageProps) {
             <p className="text-xs text-[#9B8578] mt-1">Includes your annual bonus of {fa(inputs.annualBonusLumpSum)}.</p>
           )}
         </div>
+
+        {/* Interactive portfolio chart */}
+        <PortfolioChart results={results} currency={currency} />
 
         {/* Tip */}
         <div className="border-4 border-[#3D2008] p-6 flex gap-4" style={{ background: '#FFF0E8', boxShadow: '4px 4px 0 #C68B57' }}>

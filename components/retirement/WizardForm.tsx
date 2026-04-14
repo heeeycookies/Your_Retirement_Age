@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronRight, ChevronLeft, DollarSign, PiggyBank, ShoppingBag, TrendingUp, Calendar, BarChart2, Gift, CreditCard, Landmark, Vault } from 'lucide-react'
+import { ChevronRight, ChevronLeft, DollarSign, PiggyBank, ShoppingBag, TrendingUp, TrendingDown, Calendar, BarChart2, Gift, CreditCard, Landmark, Vault, Home } from 'lucide-react'
 import { WizardInputs, CalculationMode } from '@/lib/calculations'
 import { Currency, getSymbol } from '@/lib/currency'
 import { PixelSlider } from '@/components/ui/PixelSlider'
@@ -17,18 +17,25 @@ interface WizardFormProps {
 
 // ── Step definitions ────────────────────────────────────
 
+interface Preset {
+  label: string
+  value: number
+  desc: string
+}
+
 interface StepDef {
   id: string
   icon: React.ElementType
   question: string
   hint: string
-  inputType: 'number' | 'currency' | 'slider'
+  inputType: 'number' | 'currency' | 'slider' | 'percent'
   placeholder?: string
   min: number
   max?: number
   step?: number
   defaultValue?: number
   suffix?: string
+  presets?: Preset[]
   sliderZones?: Array<{ from: number; to: number; label: string; color: string }>
   validate: (val: number, inputs: Partial<WizardInputs>) => string | null
 }
@@ -72,7 +79,7 @@ const QUICK_STEPS: StepDef[] = [
     id: 'currentSavings',
     icon: PiggyBank,
     question: 'How much do you have saved or invested right now?',
-    hint: "Include: bank savings you plan to invest, brokerage accounts, stocks, ETFs, bonds, CPF OA (Singapore), 401k / IRA (USA), Superannuation (Australia), RRSP / TFSA (Canada), ISA (UK). Don't include: home value, car, or locked funds you can't access by your retirement goal — add those separately in Full Picture mode.",
+    hint: "Include: bank savings you plan to invest, brokerage accounts, stocks, ETFs, bonds, CPF OA (Singapore), 401k / IRA (USA), Superannuation (Australia), RRSP / TFSA (Canada), ISA (UK). Don't include: home value, car, or locked funds you can't access by your retirement goal — add those separately below.",
     inputType: 'currency',
     placeholder: '10,000',
     min: 0,
@@ -95,7 +102,7 @@ const DETAILED_EXTRA_STEPS: StepDef[] = [
     id: 'annualSalaryGrowthPct',
     icon: TrendingUp,
     question: 'How fast do you expect your income to grow each year?',
-    hint: "Raises, promotions, growing your business — your savings contributions grow with your income. 2–4% is typical. 0% is fine if you're on a fixed income or unsure. This is applied to your monthly savings amount each year.",
+    hint: "Raises, promotions, growing your business — your savings contributions grow with your income. 2–4% is typical. 0% if you're on a fixed income or unsure. This is applied to your monthly savings each year.",
     inputType: 'slider',
     min: 0, max: 15, step: 0.5,
     defaultValue: 3,
@@ -108,10 +115,26 @@ const DETAILED_EXTRA_STEPS: StepDef[] = [
     validate: v => (v < 0 || v > 15) ? 'Enter between 0% and 15%.' : null,
   },
   {
+    id: 'annualExpenseGrowthPct',
+    icon: TrendingDown,
+    question: 'How much do you expect your expenses to grow each year?',
+    hint: "Lifestyle inflation — spending tends to creep up as income rises. 2–3% tracks cost-of-living. 5%+ means significant lifestyle upgrades planned. This adjusts your Freedom Number to reflect what your life will actually cost at retirement, not just today.",
+    inputType: 'slider',
+    min: 0, max: 10, step: 0.5,
+    defaultValue: 2,
+    suffix: '%',
+    sliderZones: [
+      { from: 0, to: 2,  label: 'Frugal / fixed',  color: '#F0D9C4' },
+      { from: 2, to: 5,  label: 'Typical',          color: '#C8E6C9' },
+      { from: 5, to: 10, label: 'Lifestyle creep',  color: '#F4A7B9' },
+    ],
+    validate: v => (v < 0 || v > 10) ? 'Enter between 0% and 10%.' : null,
+  },
+  {
     id: 'annualBonusLumpSum',
     icon: Gift,
     question: 'Do you invest a lump sum each year?',
-    hint: "Year-end bonus, tax refund, RSU / stock vest, inheritance installment — any extra you invest once a year on top of your monthly savings. Enter 0 if none.",
+    hint: "Year-end bonus, tax refund, RSU / stock vest, dividend payout — any extra you invest once a year on top of your monthly savings. Enter 0 if none.",
     inputType: 'currency',
     placeholder: '0',
     min: 0,
@@ -120,19 +143,21 @@ const DETAILED_EXTRA_STEPS: StepDef[] = [
   {
     id: 'expectedReturnPct',
     icon: BarChart2,
-    question: 'What return do you expect on your investments each year?',
-    hint: "This is the annual growth rate applied to ALL your savings. Not sure? Use these as a guide: savings account / fixed deposit → ~2–3% · CPF SA / government bonds → ~4% · balanced portfolio (stocks + bonds) → ~6% · index funds / ETFs / mostly stocks → ~7–9% · The default 7% is based on the long-run average of global equity index funds.",
-    inputType: 'slider',
-    min: 2, max: 12, step: 0.5,
+    question: 'What annual return do you expect on your investments?',
+    hint: "Type any %, or pick a preset below. This is the annual growth rate applied to ALL your savings. For a mix of investments, use a weighted average (e.g. 50% in 4% bonds + 50% in 10% stocks = 7%). Crypto and high-risk assets can go much higher — but also much lower.",
+    inputType: 'percent',
+    placeholder: '7',
+    min: 0.1,
     defaultValue: 7,
     suffix: '%',
-    sliderZones: [
-      { from: 2,  to: 4,  label: 'Cash / CPF',    color: '#F0D9C4' },
-      { from: 4,  to: 7,  label: 'Balanced',       color: '#C8E6C9' },
-      { from: 7,  to: 10, label: 'Growth',          color: '#BBDEFB' },
-      { from: 10, to: 12, label: 'Aggressive',      color: '#E1BEE7' },
+    presets: [
+      { label: 'Cash / FD',     value: 2.5, desc: 'savings account, fixed deposit' },
+      { label: 'CPF / Bonds',   value: 4,   desc: 'government-backed funds' },
+      { label: 'Index ETF',     value: 7,   desc: 'global index funds, 60/40' },
+      { label: 'Growth stocks', value: 10,  desc: 'mostly equities, higher risk' },
+      { label: 'Crypto / Alt',  value: 20,  desc: 'very high risk, very volatile' },
     ],
-    validate: v => (v < 2 || v > 12) ? 'Enter between 2% and 12%.' : null,
+    validate: v => (!v || v <= 0) ? 'Enter a return rate above 0%.' : null,
   },
   {
     id: 'monthlyDebtPayments',
@@ -148,7 +173,7 @@ const DETAILED_EXTRA_STEPS: StepDef[] = [
     id: 'monthlyPensionIncome',
     icon: Landmark,
     question: 'Do you expect a pension or government payout at retirement?',
-    hint: "Any guaranteed monthly income you'll receive at retirement that isn't from your own portfolio: CPF Life payouts (Singapore), Social Security (USA), Age Pension (Australia), State Pension (UK), company defined-benefit pension. This directly reduces how large your Freedom Number needs to be. Enter 0 if unsure.",
+    hint: "Any guaranteed monthly income at retirement that isn't from your own portfolio: CPF Life payouts (Singapore), Social Security (USA), Age Pension (Australia), State Pension (UK), company defined-benefit pension. This directly reduces your Freedom Number. Enter 0 if unsure.",
     inputType: 'currency',
     placeholder: '0',
     min: 0,
@@ -158,7 +183,17 @@ const DETAILED_EXTRA_STEPS: StepDef[] = [
     id: 'retirementAccountBalance',
     icon: Vault,
     question: 'Do you have money locked in a retirement fund?',
-    hint: "Money you've saved that you can't freely withdraw yet: CPF SA (Singapore, locked until ~65), 401k / IRA before 59½ (USA), Superannuation before ~60 (Australia), RRSP before 71 (Canada), workplace pension. Enter the total balance. Enter 0 if you already counted this in your savings, or if you have none.",
+    hint: "Money you've saved that you can't freely withdraw yet: CPF SA (Singapore, locked until ~65), 401k / IRA before 59½ (USA), Superannuation before ~60 (Australia), RRSP before 71 (Canada), workplace pension. Enter the total balance. Enter 0 if already counted in your savings above.",
+    inputType: 'currency',
+    placeholder: '0',
+    min: 0,
+    validate: v => (isNaN(v) || v < 0) ? 'Enter 0 or more.' : null,
+  },
+  {
+    id: 'plannedMajorExpenses',
+    icon: Home,
+    question: 'Any big planned expenses before retirement?',
+    hint: "House down payment, car purchase, renovation, wedding, starting a business, children's education — large one-time costs that'll reduce the money going toward retirement. Enter the total you plan to spend.",
     inputType: 'currency',
     placeholder: '0',
     min: 0,
@@ -172,22 +207,27 @@ export function WizardForm({ mode, currency, onComplete }: WizardFormProps) {
     : QUICK_STEPS
 
   const [stepIdx, setStepIdx]     = useState(0)
-  const [values, setValues]       = useState<Record<string, string>>({})
+  const [values, setValues]       = useState<Record<string, string>>({
+    expectedReturnPct: '7',  // pre-populate default so input shows it
+  })
   const [sliderValues, setSliders]= useState<Record<string, number>>({
-    annualSalaryGrowthPct: 3,
-    expectedReturnPct:     7,
+    annualSalaryGrowthPct:  3,
+    annualExpenseGrowthPct: 2,
   })
   const [monthlySavings, setMonthlySavings]           = useState('')
   const [savingsErr, setSavingsErr]                   = useState('')
   const [retirementAccessAge, setRetirementAccessAge] = useState('65')
   const [accessAgeErr, setAccessAgeErr]               = useState('')
+  const [plannedExpensesYear, setPlannedExpensesYear] = useState('5')
+  const [plannedExpensesYearErr, setPlannedExpensesYearErr] = useState('')
   const [error, setError]                             = useState('')
 
   const step      = STEPS[stepIdx]
   const isLast    = stepIdx === STEPS.length - 1
   const otterSrc  = STEP_OTTERS[stepIdx % 3]
-  const isExpensesStep         = step.id === 'monthlyExpenses'
+  const isExpensesStep          = step.id === 'monthlyExpenses'
   const isRetirementAccountStep = step.id === 'retirementAccountBalance'
+  const isPlannedExpensesStep   = step.id === 'plannedMajorExpenses'
   const sym = getSymbol(currency)
 
   function getVal(id: string) { return values[id] ?? '' }
@@ -205,6 +245,9 @@ export function WizardForm({ mode, currency, onComplete }: WizardFormProps) {
     let val: number
     if (step.inputType === 'slider') {
       val = sliderValues[step.id] ?? step.defaultValue ?? step.min
+    } else if (step.inputType === 'percent') {
+      const raw = getVal(step.id)
+      val = raw ? parseFloat(raw) : (step.defaultValue ?? step.min)
     } else {
       val = parseFloat((getVal(step.id) || '0').replace(/,/g, ''))
     }
@@ -222,7 +265,7 @@ export function WizardForm({ mode, currency, onComplete }: WizardFormProps) {
       setSavingsErr('')
     }
 
-    // Retirement account step: also validate access age sub-field (only if balance > 0)
+    // Retirement account step: also validate access age (only if balance > 0)
     if (isRetirementAccountStep && val > 0) {
       const age = parseInt(retirementAccessAge)
       if (!retirementAccessAge || isNaN(age) || age < 40 || age > 80) {
@@ -232,11 +275,25 @@ export function WizardForm({ mode, currency, onComplete }: WizardFormProps) {
       setAccessAgeErr('')
     }
 
+    // Planned expenses step: validate years if amount > 0
+    if (isPlannedExpensesStep && val > 0) {
+      const yrs = parseInt(plannedExpensesYear)
+      if (!plannedExpensesYear || isNaN(yrs) || yrs < 1 || yrs > 40) {
+        setPlannedExpensesYearErr('Enter a number between 1 and 40.')
+        return
+      }
+      setPlannedExpensesYearErr('')
+    }
+
     if (isLast) {
       const partial = buildPartial()
-      const ms  = parseFloat(monthlySavings.replace(/,/g, ''))
-      const rab = parseFloat(getVal('retirementAccountBalance') || '0')
-      const raa = parseInt(retirementAccessAge) || 65
+      const ms      = parseFloat(monthlySavings.replace(/,/g, ''))
+      const rab     = parseFloat(getVal('retirementAccountBalance') || '0')
+      const raa     = parseInt(retirementAccessAge) || 65
+      const pe      = parseFloat(getVal('plannedMajorExpenses') || '0')
+      const pey     = parseInt(plannedExpensesYear) || 5
+      const retPct  = parseFloat(getVal('expectedReturnPct') || '7') || 7
+
       onComplete({
         currentAge:                  partial.currentAge!,
         retirementAge:               partial.retirementAge!,
@@ -245,12 +302,15 @@ export function WizardForm({ mode, currency, onComplete }: WizardFormProps) {
         monthlyExpenses:             parseFloat(getVal('monthlyExpenses')),
         monthlySavings:              ms,
         annualSalaryGrowthPct:       mode === 'detailed' ? (sliderValues['annualSalaryGrowthPct'] ?? 3)  : undefined,
+        annualExpenseGrowthPct:      mode === 'detailed' ? (sliderValues['annualExpenseGrowthPct'] ?? 2) : undefined,
         annualBonusLumpSum:          mode === 'detailed' ? (parseFloat(getVal('annualBonusLumpSum') || '0')) : undefined,
-        expectedReturnPct:           mode === 'detailed' ? (sliderValues['expectedReturnPct'] ?? 7)       : undefined,
+        expectedReturnPct:           mode === 'detailed' ? retPct : undefined,
         monthlyDebtPayments:         mode === 'detailed' ? (parseFloat(getVal('monthlyDebtPayments') || '0'))  : undefined,
         monthlyPensionIncome:        mode === 'detailed' ? (parseFloat(getVal('monthlyPensionIncome') || '0')) : undefined,
         retirementAccountBalance:    mode === 'detailed' && rab > 0 ? rab  : undefined,
         retirementAccountAccessAge:  mode === 'detailed' && rab > 0 ? raa  : undefined,
+        plannedMajorExpenses:        mode === 'detailed' && pe > 0 ? pe  : undefined,
+        plannedMajorExpensesYear:    mode === 'detailed' && pe > 0 ? pey : undefined,
       })
       return
     }
@@ -260,6 +320,9 @@ export function WizardForm({ mode, currency, onComplete }: WizardFormProps) {
   }
 
   const progress = ((stepIdx + 1) / STEPS.length) * 100
+
+  // For percent input — current numeric value for highlighting presets
+  const currentReturnVal = parseFloat(getVal('expectedReturnPct') || '7') || 7
 
   return (
     <div
@@ -272,7 +335,7 @@ export function WizardForm({ mode, currency, onComplete }: WizardFormProps) {
         style={{ backgroundImage: 'radial-gradient(circle, #3D2008 1px, transparent 1px)', backgroundSize: '24px 24px' }}
       />
 
-      {/* Otter background — changes every step */}
+      {/* Otter background */}
       <div className="absolute bottom-0 right-0 pointer-events-none select-none z-0 overflow-hidden" style={{ width: 260, height: 260 }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -329,7 +392,53 @@ export function WizardForm({ mode, currency, onComplete }: WizardFormProps) {
               valueSuffix={step.suffix}
               zones={step.sliderZones}
             />
+          ) : step.inputType === 'percent' ? (
+            /* ── Percent input with preset buttons ── */
+            <div>
+              <div className="relative flex items-center">
+                <input
+                  type="number"
+                  value={getVal(step.id)}
+                  onChange={e => { setValues(p => ({ ...p, [step.id]: e.target.value })); setError('') }}
+                  onKeyDown={e => e.key === 'Enter' && handleNext()}
+                  placeholder={String(step.defaultValue ?? step.min)}
+                  min={0}
+                  inputMode="decimal"
+                  className="w-full border-4 border-[#3D2008] bg-[#FAFAFA] text-[#3D2008] text-2xl font-bold py-4 pl-4 pr-14 outline-none focus:bg-white transition-colors"
+                  style={{ boxShadow: 'inset 3px 3px 0 #F0D9C4', appearance: 'none', MozAppearance: 'textfield' as never }}
+                />
+                <span className="absolute right-4 text-xl font-black text-[#9B8578] pointer-events-none select-none">%</span>
+              </div>
+              {/* Preset buttons */}
+              <div className="flex flex-wrap gap-2 mt-4">
+                {step.presets!.map(preset => {
+                  const isActive = Math.abs(currentReturnVal - preset.value) < 0.01
+                  return (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      onClick={() => { setValues(p => ({ ...p, [step.id]: String(preset.value) })); setError('') }}
+                      className="flex flex-col items-start px-3 py-2 border-2 border-[#3D2008] text-left transition-all"
+                      style={{
+                        background: isActive ? '#E879A0' : '#FFF0E8',
+                        boxShadow: isActive ? '0 0 0 #3D2008' : '2px 2px 0 #3D2008',
+                        color: isActive ? 'white' : '#3D2008',
+                      }}
+                    >
+                      <span className="font-pixel text-[9px] tracking-wide">{preset.label} — {preset.value}%</span>
+                      <span className="text-[10px] mt-0.5 opacity-70">{preset.desc}</span>
+                    </button>
+                  )
+                })}
+              </div>
+              {currentReturnVal > 25 && (
+                <p className="text-xs text-amber-600 border-l-4 border-amber-400 pl-3 mt-3">
+                  {currentReturnVal}% is very high — great if it's accurate, but retirement projections at this rate assume sustained performance. Consider running a conservative scenario too.
+                </p>
+              )}
+            </div>
           ) : (
+            /* ── Currency / number input ── */
             <div>
               <div className="relative">
                 {step.inputType === 'currency' && (
@@ -414,6 +523,35 @@ export function WizardForm({ mode, currency, onComplete }: WizardFormProps) {
               />
               {accessAgeErr && (
                 <p className="text-sm font-semibold text-red-500 border-l-4 border-red-400 pl-3 mt-2">{accessAgeErr}</p>
+              )}
+            </div>
+          )}
+
+          {/* Years until expense sub-field (planned expenses step) */}
+          {isPlannedExpensesStep && (
+            <div className="mt-5 pt-5 border-t-2 border-dashed border-[#D4B5A0]">
+              <label className="block text-sm font-bold text-[#3D2008] mb-1">
+                How many years from now?
+              </label>
+              <p className="text-xs text-[#9B8578] mb-3">
+                When do you expect to make this purchase? Closer expenses reduce your investable savings sooner and have more impact on your timeline.
+              </p>
+              <div className="relative flex items-center">
+                <input
+                  type="number"
+                  value={plannedExpensesYear}
+                  onChange={e => { setPlannedExpensesYear(e.target.value); setPlannedExpensesYearErr('') }}
+                  placeholder="5"
+                  min={1}
+                  max={40}
+                  inputMode="numeric"
+                  className="w-full border-4 border-[#3D2008] bg-[#FAFAFA] text-[#3D2008] text-2xl font-bold py-4 pl-4 pr-24 outline-none focus:bg-white"
+                  style={{ boxShadow: 'inset 3px 3px 0 #F0D9C4', appearance: 'none', MozAppearance: 'textfield' as never }}
+                />
+                <span className="absolute right-4 text-sm font-bold text-[#9B8578] pointer-events-none">years</span>
+              </div>
+              {plannedExpensesYearErr && (
+                <p className="text-sm font-semibold text-red-500 border-l-4 border-red-400 pl-3 mt-2">{plannedExpensesYearErr}</p>
               )}
             </div>
           )}

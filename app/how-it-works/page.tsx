@@ -67,16 +67,19 @@ export default function HowItWorksPage() {
             Your <strong>Freedom Number</strong> is the total amount you need invested so your money works for you — forever. Once you hit it, you can stop working and live off your investment returns.
           </p>
           <Formula>
-            Freedom Number = monthly expenses × 0.8 × 12 × 25
+            Freedom Number = monthly expenses × (1 + expense growth)^years × 0.8 × 12 × 25
           </Formula>
           <p>
-            <strong>Why × 0.8?</strong> We assume your spending drops ~20% in retirement. No commuting, no work wardrobe, potentially no mortgage, kids grown up. You can adjust your expenses input to reflect your actual retirement lifestyle.
+            <strong>Why × 0.8?</strong> We assume your spending drops ~20% in retirement. No commuting, no work wardrobe, potentially no mortgage, kids grown up. You can adjust your expenses input to reflect your actual retirement lifestyle. Other calculators (like Networthify) skip the 0.8 — to match them, just enter 80% of your actual expenses in the monthly expenses field.
           </p>
           <p>
             <strong>Why × 25?</strong> It comes from the 4% Safe Withdrawal Rule (see below). 1 ÷ 0.04 = 25.
           </p>
           <p>
-            <strong>If you entered a pension / CPF payout:</strong> that monthly income is subtracted from your expenses before the formula runs — so your Freedom Number shrinks, because your portfolio doesn't need to cover what the government or your employer already covers.
+            <strong>Expense growth (lifestyle inflation):</strong> if you entered a lifestyle inflation %, your projected retirement expenses are calculated first — expenses grow at that rate until your retirement date — then the formula runs on the projected amount. A 3% expense growth over 20 years increases your Freedom Number by ~81%.
+          </p>
+          <p>
+            <strong>If you entered a pension / CPF payout:</strong> that monthly income is subtracted from your projected expenses before the formula runs — so your Freedom Number shrinks, because your portfolio doesn't need to cover what the government or your employer already covers.
           </p>
         </Section>
 
@@ -114,7 +117,27 @@ export default function HowItWorksPage() {
           </p>
         </Section>
 
-        {/* 4. Salary Growth */}
+        {/* 4. Lifestyle Inflation */}
+        <Section title="Lifestyle Inflation / Expense Growth (Full Picture Mode)">
+          <p>
+            As your income grows, your spending tends to grow too — nicer restaurants, a bigger apartment, more travel. This is lifestyle inflation. If left untracked, it silently pushes your Freedom Number higher every year.
+          </p>
+          <Formula>
+            Projected retirement expenses = current expenses × (1 + growth%)^years to retirement{'\n\n'}
+            Example: $3,000/mo today, 3% growth, 20 years to retirement:{'\n'}
+            $3,000 × (1.03)^20 = $3,000 × 1.806 = $5,418/mo at retirement{'\n\n'}
+            Freedom Number on today's expenses:  $3,000 × 0.8 × 12 × 25 = $720,000{'\n'}
+            Freedom Number with 3% growth:       $5,418 × 0.8 × 12 × 25 = $1,300,320
+          </Formula>
+          <p>
+            <strong>This is about lifestyle, not inflation.</strong> The 7% default return rate is a real return — it already accounts for regular price inflation (CPI). The expense growth % should only represent spending increases above CPI: choosing to spend more as you earn more, not just the same things getting more expensive.
+          </p>
+          <p>
+            0% is fine if you plan to keep your lifestyle flat. 2–3% is typical for gradual upgrades. 5%+ means significant planned lifestyle improvements.
+          </p>
+        </Section>
+
+        {/* 5. Salary Growth */}
         <Section title="Salary Growth (Full Picture Mode)">
           <p>
             If you enter a salary growth %, your monthly savings contributions grow by that percentage every year. A 3% raise means you can save 3% more per year — which accelerates your retirement timeline significantly over a decade.
@@ -126,7 +149,39 @@ export default function HowItWorksPage() {
             Year 10: save $652/mo
           </Formula>
           <p>
-            This was a bug in the original version — salary growth was collected but not applied to the calculations. It's now properly modelled year by year.
+            Salary growth applies to your monthly savings only — not to the annual bonus lump sum, which is modelled as a separate yearly event.
+          </p>
+        </Section>
+
+        {/* 6. Annual Bonus */}
+        <Section title="Annual Bonus / Lump Sum Investing">
+          <p>
+            If you invest a lump sum once a year (year-end bonus, tax refund, RSU vest, dividend), this is modelled as a single portfolio injection at the end of each year — not spread monthly. This is the mathematically correct treatment: the timing of a lump sum matters for compounding.
+          </p>
+          <Formula>
+            Portfolio at end of year = (portfolio × monthly growth for 12 months){'\n'}
+                                     + annual bonus
+          </Formula>
+          <p>
+            <strong>Note:</strong> The required monthly savings figure shown on your results does not account for your annual bonus — it shows the pure monthly savings needed. Your actual required monthly savings is lower once the bonus is factored in; the projected retire age already reflects this correctly.
+          </p>
+        </Section>
+
+        {/* 7. Planned Major Expenses */}
+        <Section title="Planned Major Expenses (Full Picture Mode)">
+          <p>
+            A house down payment, car purchase, renovation, wedding, or business startup — large one-time costs before retirement that will temporarily reduce your portfolio.
+          </p>
+          <p>
+            We model this as a single deduction from your portfolio at the year you specified. Your portfolio dips at that point and then continues growing toward your Freedom Number. This means:
+          </p>
+          <ul className="space-y-2">
+            <Tick color="#BBDEFB">The projected retire age already accounts for the dip — it takes longer to recover and hit your target.</Tick>
+            <Tick color="#BBDEFB">The chart shows a visible drop in that year so you can see the impact.</Tick>
+            <Tick color="#F4A7B9">The required monthly savings figure does not adjust for the planned expense — it's a simplified formula. The retire age projection is the more accurate number when a large expense is involved.</Tick>
+          </ul>
+          <p className="mt-2">
+            If you cancel or delay a planned expense, your projected retire date will improve. You can test this by re-running with 0 for the planned expense.
           </p>
         </Section>
 
@@ -165,10 +220,10 @@ export default function HowItWorksPage() {
           </ul>
         </Section>
 
-        {/* 7. Investment return rate */}
+        {/* 8. Investment return rate */}
         <Section title="The Investment Return Rate">
           <p>
-            The return rate you choose is applied to your entire savings balance — both the money you have now and your future contributions. Choose a rate that reflects how your money is actually invested:
+            You can type <strong>any percentage</strong> — there's no cap. The rate is applied to your entire savings balance: both what you have now and your future contributions. Quick-pick presets are shown in the calculator as a guide.
           </p>
           <div className="space-y-2 my-3">
             {[
@@ -176,8 +231,8 @@ export default function HowItWorksPage() {
               { rate: '4%',    label: 'CPF SA, government bonds, very conservative investing' },
               { rate: '5–6%',  label: 'Conservative portfolio (mostly bonds + some stocks)' },
               { rate: '7–8%',  label: 'Balanced portfolio — global index funds, 60/40 stocks+bonds' },
-              { rate: '8–10%', label: 'Growth portfolio — mostly equities, index ETFs' },
-              { rate: '10–12%',label: 'Aggressive — concentrated stocks, higher risk & volatility' },
+              { rate: '9–12%', label: 'Growth / aggressive — mostly equities, concentrated stocks' },
+              { rate: '20%+',  label: 'Crypto, high-risk assets — extremely volatile, not guaranteed' },
             ].map(({ rate, label }) => (
               <div key={rate} className="flex gap-3 items-start">
                 <span
@@ -191,14 +246,17 @@ export default function HowItWorksPage() {
             ))}
           </div>
           <p>
-            The <strong>7% default</strong> is based on the long-run real return of global equity index funds (MSCI World Index). It accounts for inflation. Past returns don't guarantee future results, but it's the most commonly used assumption in retirement planning.
+            The <strong>7% default</strong> is based on the long-run real return of global equity index funds (MSCI World Index). It already accounts for inflation — so it's a real return, not nominal. Past returns don't guarantee future results, but 7% is the most commonly used assumption in retirement planning.
           </p>
           <p>
             If your savings are split — say 50% in a 1% savings account and 50% in stocks earning 9% — use the weighted average: 0.5 × 1% + 0.5 × 9% = <strong>5%</strong>.
           </p>
+          <p>
+            <strong>For crypto or high-risk assets:</strong> the math works at any %, but be aware that high return assumptions mean a very optimistic projection. These assets can also drop 50–90% in a single year. Consider running the conservative scenario with a much lower rate alongside your crypto estimate.
+          </p>
         </Section>
 
-        {/* 8. Limitations */}
+        {/* 9. Limitations */}
         <Section title="Limitations & What This Tool Doesn't Do">
           <ul className="space-y-2">
             <Tick color="#F4A7B9">Doesn't account for tax on investment gains or withdrawals (varies by country and account type)</Tick>

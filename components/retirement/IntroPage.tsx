@@ -193,8 +193,8 @@ export function IntroPage({ onStart }: IntroPageProps) {
                   </div>
                   <div>
                     <div className="font-pixel text-[10px] text-[#3D2008] mb-1">FULL PICTURE</div>
-                    <div className="text-xs font-semibold text-[#5C3D2E] mb-1">11 questions · 5 min</div>
-                    <div className="text-[11px] text-[#9B8578]">Salary growth, bonuses, debt, pension, retirement fund — the full story.</div>
+                    <div className="text-xs font-semibold text-[#5C3D2E] mb-1">13 questions · 6 min</div>
+                    <div className="text-[11px] text-[#9B8578]">Salary growth, lifestyle inflation, debt, pension, investments, big expenses — the full story.</div>
                   </div>
                   <div className="flex items-center gap-1 text-xs font-bold text-[#E879A0] mt-1 group-hover:translate-x-1 transition-transform">
                     Start <ChevronRight className="w-3 h-3" />

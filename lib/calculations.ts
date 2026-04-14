@@ -13,12 +13,15 @@ export interface WizardInputs {
 
   // ── Detailed mode (optional) ─────────────────────────────
   annualSalaryGrowthPct?: number  // e.g. 3 → monthly savings grow 3%/yr
+  annualExpenseGrowthPct?: number // e.g. 2 → expenses grow 2%/yr (lifestyle inflation)
   annualBonusLumpSum?: number     // extra one-time invest per year
   expectedReturnPct?: number      // overrides default 7% moderate scenario
   monthlyDebtPayments?: number    // student loan, car, credit card
   monthlyPensionIncome?: number   // CPF Life, Social Security, company pension at retirement
   retirementAccountBalance?: number    // CPF OA+SA, 401k, Super, RRSP — locked until accessAge
   retirementAccountAccessAge?: number  // age when locked funds become accessible (default 65)
+  plannedMajorExpenses?: number        // one-time big expense (house, car, etc.)
+  plannedMajorExpensesYear?: number    // years from now until the expense
 }
 
 export interface ProjectionRow {
@@ -47,6 +50,8 @@ export interface CalculationResults {
   projectedRetireAge: number | null
   debtImpactYears?: number          // years earlier if debt redirected to savings
   lockedAccount?: LockedAccount     // shown when retirement fund not accessible by goal age
+  plannedExpenseAmount?: number     // echo back for display in results
+  plannedExpenseYear?: number
   scenarios: {
     conservative: ScenarioResult
     moderate: ScenarioResult
@@ -57,9 +62,16 @@ export interface CalculationResults {
 // ── Core math ─────────────────────────────────────────────
 
 /** Freedom Number = 25× annual retirement spend (4% safe withdrawal rule).
- *  Retirement spend assumed at 80% of current monthly expenses, minus pension income. */
-export function getFreedomNumber(monthlyExpenses: number, monthlyPension = 0): number {
-  const netMonthly = Math.max(0, monthlyExpenses * 0.8 - monthlyPension)
+ *  Retirement spend projected forward using expense growth rate, then assumed at 80%,
+ *  minus any pension income. */
+export function getFreedomNumber(
+  monthlyExpenses: number,
+  monthlyPension = 0,
+  yearsToRetirement = 0,
+  annualExpenseGrowthPct = 0,
+): number {
+  const projectedMonthly = monthlyExpenses * Math.pow(1 + annualExpenseGrowthPct / 100, yearsToRetirement)
+  const netMonthly = Math.max(0, projectedMonthly * 0.8 - monthlyPension)
   return netMonthly * 12 * 25
 }
 
@@ -91,8 +103,8 @@ export function requiredMonthlySavings(
 }
 
 /**
- * Simulates month-by-month growth, with optional salary growth applied annually.
- * This is how long until portfolio reaches target.
+ * Simulates month-by-month growth, with optional salary growth applied annually
+ * and a planned major expense deducted at the specified month.
  */
 function yearsToTarget(
   currentSavings: number,
@@ -100,17 +112,24 @@ function yearsToTarget(
   annualReturnPct: number,
   target: number,
   annualBonus = 0,
-  salaryGrowthPct = 0
+  salaryGrowthPct = 0,
+  plannedExpense = 0,
+  plannedExpenseMonth = 0,
 ): number | null {
   const r = annualReturnPct / 100 / 12
   let portfolio = currentSavings
   let currentMonthly = monthlySavings
+  let expenseApplied = false
+
   for (let month = 1; month <= 60 * 12; month++) {
     portfolio = portfolio * (1 + r) + currentMonthly
     if (month % 12 === 0) {
       portfolio += annualBonus
-      // Salary grows → savings contributions grow proportionally
       if (salaryGrowthPct > 0) currentMonthly *= (1 + salaryGrowthPct / 100)
+    }
+    if (!expenseApplied && plannedExpense > 0 && plannedExpenseMonth > 0 && month >= plannedExpenseMonth) {
+      portfolio = Math.max(0, portfolio - plannedExpense)
+      expenseApplied = true
     }
     if (portfolio >= target) return month / 12
   }
@@ -118,7 +137,8 @@ function yearsToTarget(
 }
 
 /**
- * Builds a year-by-year projection, applying salary growth to monthly savings each year.
+ * Builds a year-by-year projection, applying salary growth to monthly savings each year,
+ * and deducting any planned major expense at the specified year.
  */
 function buildProjection(
   currentSavings: number,
@@ -127,19 +147,27 @@ function buildProjection(
   currentAge: number,
   maxYears: number,
   annualBonus = 0,
-  salaryGrowthPct = 0
+  salaryGrowthPct = 0,
+  plannedExpense = 0,
+  plannedExpenseYear = 0,
 ): ProjectionRow[] {
   const r = annualReturnPct / 100 / 12
   let portfolio = currentSavings
   let currentMonthly = monthlySavings
   const rows: ProjectionRow[] = []
   const startYear = new Date().getFullYear()
+  let expenseApplied = false
+
   for (let year = 1; year <= maxYears; year++) {
     for (let m = 0; m < 12; m++) {
       portfolio = portfolio * (1 + r) + currentMonthly
     }
     portfolio += annualBonus
     if (salaryGrowthPct > 0) currentMonthly *= (1 + salaryGrowthPct / 100)
+    if (!expenseApplied && plannedExpense > 0 && plannedExpenseYear > 0 && year >= plannedExpenseYear) {
+      portfolio = Math.max(0, portfolio - plannedExpense)
+      expenseApplied = true
+    }
     rows.push({ year: startYear + year, age: currentAge + year, portfolioValue: Math.round(portfolio) })
   }
   return rows
@@ -152,12 +180,15 @@ export function runCalculations(inputs: WizardInputs): CalculationResults {
     annualBonusLumpSum = 0,
     expectedReturnPct,
     annualSalaryGrowthPct = 0,
+    annualExpenseGrowthPct = 0,
   } = inputs
 
-  const pensionIncome   = inputs.monthlyPensionIncome ?? 0
-  const debtPayments    = inputs.monthlyDebtPayments ?? 0
-  const retirementBal   = inputs.retirementAccountBalance ?? 0
+  const pensionIncome    = inputs.monthlyPensionIncome ?? 0
+  const debtPayments     = inputs.monthlyDebtPayments ?? 0
+  const retirementBal    = inputs.retirementAccountBalance ?? 0
   const retirementAccess = inputs.retirementAccountAccessAge ?? 65
+  const plannedExpense   = inputs.plannedMajorExpenses ?? 0
+  const plannedExpYear   = inputs.plannedMajorExpensesYear ?? 0
 
   // If locked retirement fund is accessible by goal retirement age, count it in savings
   const effectiveCurrentSavings = retirementAccess <= retirementAge
@@ -165,7 +196,6 @@ export function runCalculations(inputs: WizardInputs): CalculationResults {
     : currentSavings
 
   // If NOT accessible by retirement goal, project what it will be worth at access age
-  // (conservative 4% — typical for CPF SA / government-backed funds)
   let lockedAccount: LockedAccount | undefined
   if (retirementBal > 0 && retirementAccess > retirementAge) {
     const yearsToAccess = Math.max(0, retirementAccess - currentAge)
@@ -176,22 +206,27 @@ export function runCalculations(inputs: WizardInputs): CalculationResults {
     }
   }
 
-  const effectiveMonthly = monthlySavings + (annualBonusLumpSum / 12)
-  const freedomNumber    = getFreedomNumber(monthlyExpenses, pensionIncome)
   const yearsToGoal      = retirementAge - currentAge
   const maxYears         = Math.min(80 - currentAge, 55)
   const moderateReturn   = expectedReturnPct ?? 7
 
+  // Freedom Number projects expenses forward to retirement date using lifestyle inflation
+  const freedomNumber = getFreedomNumber(monthlyExpenses, pensionIncome, yearsToGoal, annualExpenseGrowthPct)
+
+  const plannedExpMonth = plannedExpYear > 0 ? Math.round(plannedExpYear * 12) : 0
+
   const calcScenario = (returnPct: number): ScenarioResult => {
     const yrs = yearsToTarget(
-      effectiveCurrentSavings, effectiveMonthly, returnPct,
-      freedomNumber, annualBonusLumpSum, annualSalaryGrowthPct
+      effectiveCurrentSavings, monthlySavings, returnPct,
+      freedomNumber, annualBonusLumpSum, annualSalaryGrowthPct,
+      plannedExpense, plannedExpMonth,
     )
     const retireAtAge = yrs !== null ? Math.round(currentAge + yrs) : null
     const reqSavings  = requiredMonthlySavings(effectiveCurrentSavings, freedomNumber, yearsToGoal, returnPct)
     const projection  = buildProjection(
       effectiveCurrentSavings, monthlySavings, returnPct, currentAge,
-      Math.min(maxYears, 50), annualBonusLumpSum, annualSalaryGrowthPct
+      Math.min(maxYears, 50), annualBonusLumpSum, annualSalaryGrowthPct,
+      plannedExpense, plannedExpYear,
     )
     return { retireAtAge, requiredMonthlySavings: Math.max(0, reqSavings), portfolioProjection: projection }
   }
@@ -202,8 +237,8 @@ export function runCalculations(inputs: WizardInputs): CalculationResults {
   // Debt impact: how many years earlier if debt cleared and redirected to savings
   let debtImpactYears: number | undefined
   if (debtPayments > 0) {
-    const withDebt    = yearsToTarget(effectiveCurrentSavings, effectiveMonthly,             moderateReturn, freedomNumber, annualBonusLumpSum, annualSalaryGrowthPct)
-    const withoutDebt = yearsToTarget(effectiveCurrentSavings, effectiveMonthly + debtPayments, moderateReturn, freedomNumber, annualBonusLumpSum, annualSalaryGrowthPct)
+    const withDebt    = yearsToTarget(effectiveCurrentSavings, monthlySavings,                moderateReturn, freedomNumber, annualBonusLumpSum, annualSalaryGrowthPct, plannedExpense, plannedExpMonth)
+    const withoutDebt = yearsToTarget(effectiveCurrentSavings, monthlySavings + debtPayments, moderateReturn, freedomNumber, annualBonusLumpSum, annualSalaryGrowthPct, plannedExpense, plannedExpMonth)
     if (withDebt !== null && withoutDebt !== null) {
       debtImpactYears = Math.round((withDebt - withoutDebt) * 10) / 10
     }
@@ -217,10 +252,12 @@ export function runCalculations(inputs: WizardInputs): CalculationResults {
     projectedRetireAge:     moderate.retireAtAge,
     debtImpactYears,
     lockedAccount,
+    plannedExpenseAmount: plannedExpense > 0 ? plannedExpense : undefined,
+    plannedExpenseYear:   plannedExpense > 0 ? plannedExpYear : undefined,
     scenarios: {
-      conservative: calcScenario(Math.max(3, moderateReturn - 2)),
+      conservative: calcScenario(Math.max(1, moderateReturn - 2)),
       moderate,
-      aggressive:   calcScenario(Math.min(12, moderateReturn + 2)),
+      aggressive:   calcScenario(moderateReturn + 2),
     },
   }
 }

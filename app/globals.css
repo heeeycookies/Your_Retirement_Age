@@ -10,6 +10,7 @@
 
   html {
     scroll-behavior: smooth;
+    overflow-x: hidden;
   }
 
   body {
@@ -17,6 +18,11 @@
     -webkit-font-smoothing: antialiased;
     background-color: #FFF8F0;
     color: #3D2008;
+    overflow-x: hidden;
+    /* Smooth momentum scrolling on iOS */
+    -webkit-overflow-scrolling: touch;
+    /* Remove tap flash on mobile */
+    -webkit-tap-highlight-color: transparent;
   }
 
   /* Hide number input arrows */

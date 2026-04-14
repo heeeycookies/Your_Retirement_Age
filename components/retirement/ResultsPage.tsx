@@ -212,8 +212,8 @@ export function ResultsPage({ inputs, currency, onReset }: ResultsPageProps) {
             ].map(({ label, scenario, color }) => {
               const age = scenario.retireAtAge
               return (
-                <div key={label} className="flex items-center gap-3">
-                  <div className="w-32 text-xs text-[#9B8578] shrink-0">{label}</div>
+                <div key={label} className="flex items-center gap-2 sm:gap-3">
+                  <div className="w-20 sm:w-32 text-xs text-[#9B8578] shrink-0">{label}</div>
                   <div className="flex-1 h-5 bg-[#F0D9C4] border-2 border-[#3D2008] overflow-hidden">
                     <div
                       className="h-full transition-all duration-700"

@@ -1,7 +1,8 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
-import { Target, TrendingUp, DollarSign, Clock, Lightbulb, Home, BarChart2, CreditCard, Scissors, Mail, RotateCcw, CheckCircle, AlertCircle } from 'lucide-react'
+import { Target, TrendingUp, DollarSign, Clock, Lightbulb, Home, BarChart2, CreditCard, Scissors, Mail, RotateCcw, CheckCircle, AlertCircle, Lock } from 'lucide-react'
 import { WizardInputs, runCalculations } from '@/lib/calculations'
 import { Currency, formatAmount, formatCompact } from '@/lib/currency'
 import { GuiltyPleasures } from './GuiltyPleasures'
@@ -99,6 +100,12 @@ export function ResultsPage({ inputs, currency, onReset }: ResultsPageProps) {
             <strong className="text-white">never need to work again.</strong>{' '}
             Once you hit this, your investments pay for your life — forever.
           </p>
+          <Link
+            href="/how-it-works"
+            className="inline-block mt-4 font-pixel text-[9px] text-[#C68B57] hover:text-[#F4A7B9] transition-colors tracking-widest"
+          >
+            How we calculate this →
+          </Link>
         </div>
 
         {/* Plain English summary */}
@@ -150,6 +157,25 @@ export function ResultsPage({ inputs, currency, onReset }: ResultsPageProps) {
             )}
           </ul>
         </div>
+
+        {/* Locked retirement account */}
+        {results.lockedAccount && (
+          <div className="border-4 border-[#3D2008] p-6 flex gap-4" style={{ background: '#EEF5FF', boxShadow: '4px 4px 0 #3D2008' }}>
+            <div
+              className="w-10 h-10 bg-[#BBDEFB] border-2 border-[#3D2008] flex items-center justify-center flex-shrink-0"
+              style={{ boxShadow: '2px 2px 0 #3D2008' }}
+            >
+              <Lock className="w-5 h-5 text-[#3D2008]" strokeWidth={2} />
+            </div>
+            <div>
+              <div className="font-pixel text-[10px] text-[#3D2008] tracking-widest uppercase mb-2">Locked Retirement Fund</div>
+              <p className="text-sm text-[#3D2008] leading-relaxed">
+                Your <strong>{fc(results.lockedAccount.balance)}</strong> locked fund (accessible at age {results.lockedAccount.accessAge}) isn't counted in the above — it's not accessible by your goal retirement age. But it'll be worth approximately{' '}
+                <strong>{fc(results.lockedAccount.projectedValue)}</strong> when you can access it. Think of it as a bonus safety net.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Status */}
         <div className="bg-white border-4 border-[#3D2008] px-6 py-4 flex items-center gap-4" style={{ boxShadow: '4px 4px 0 #3D2008' }}>

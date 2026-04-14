@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import { ChevronRight, PiggyBank, TrendingUp, Clock, Zap, BarChart3 } from 'lucide-react'
@@ -192,8 +193,8 @@ export function IntroPage({ onStart }: IntroPageProps) {
                   </div>
                   <div>
                     <div className="font-pixel text-[10px] text-[#3D2008] mb-1">FULL PICTURE</div>
-                    <div className="text-xs font-semibold text-[#5C3D2E] mb-1">10 questions · 5 min</div>
-                    <div className="text-[11px] text-[#9B8578]">Salary growth, bonuses, debt, pension — the full story.</div>
+                    <div className="text-xs font-semibold text-[#5C3D2E] mb-1">11 questions · 5 min</div>
+                    <div className="text-[11px] text-[#9B8578]">Salary growth, bonuses, debt, pension, retirement fund — the full story.</div>
                   </div>
                   <div className="flex items-center gap-1 text-xs font-bold text-[#E879A0] mt-1 group-hover:translate-x-1 transition-transform">
                     Start <ChevronRight className="w-3 h-3" />
@@ -239,10 +240,13 @@ export function IntroPage({ onStart }: IntroPageProps) {
         <p className="font-pixel text-[9px] text-[#F4A7B9] tracking-widest mb-2">
           made with ♥ by heeeycookies
         </p>
-        <p className="text-[10px] text-[#7A5C4A] leading-relaxed max-w-md mx-auto">
+        <p className="text-[10px] text-[#7A5C4A] leading-relaxed max-w-md mx-auto mb-3">
           This is a personal passion project — please don&apos;t copy or monetize without permission.
           Numbers are estimates only and not financial advice. Always consult a professional.
         </p>
+        <Link href="/how-it-works" className="font-pixel text-[9px] text-[#C68B57] hover:text-[#F4A7B9] transition-colors tracking-widest">
+          How the math works →
+        </Link>
       </footer>
 
     </div>

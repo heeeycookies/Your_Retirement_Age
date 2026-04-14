@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react'
 import { Target, TrendingUp, DollarSign, Clock, Lightbulb, Home, BarChart2, CreditCard, Scissors, Mail, RotateCcw, CheckCircle, AlertCircle } from 'lucide-react'
 import { WizardInputs, runCalculations } from '@/lib/calculations'
 import { Currency, formatAmount, formatCompact } from '@/lib/currency'
-import { PixelOtterStatic } from './PixelOtter'
 import { GuiltyPleasures } from './GuiltyPleasures'
 
 interface ResultsPageProps {
@@ -67,6 +66,14 @@ export function ResultsPage({ inputs, currency, onReset }: ResultsPageProps) {
         {/* Header */}
         <div className="text-center mb-2">
           <p className="font-pixel text-[10px] text-[#9B8578] tracking-widest uppercase mb-3">Your Results</p>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={alreadyFree || onTrack ? '/happy.png' : '/shocked.png'}
+            alt="otter"
+            width={80}
+            height={80}
+            style={{ imageRendering: 'pixelated', display: 'block', margin: '0 auto 12px' }}
+          />
           <h1 className="text-3xl sm:text-4xl font-bold text-[#3D2008] mb-2">Here's your number.</h1>
           <p className="text-[#9B8578] text-sm">Based on what you told us — plain and simple.</p>
         </div>
@@ -92,6 +99,56 @@ export function ResultsPage({ inputs, currency, onReset }: ResultsPageProps) {
             <strong className="text-white">never need to work again.</strong>{' '}
             Once you hit this, your investments pay for your life — forever.
           </p>
+        </div>
+
+        {/* Plain English summary */}
+        <div
+          className="border-4 border-[#3D2008] p-6"
+          style={{ background: '#FFF0E8', boxShadow: '4px 4px 0 #C68B57' }}
+        >
+          <p className="font-pixel text-[10px] text-[#E879A0] tracking-widest uppercase mb-4">In Plain English</p>
+          <ul className="space-y-3">
+            <li className="flex items-start gap-3 text-sm text-[#3D2008]">
+              <div className="w-5 h-5 bg-[#F4A7B9] border-2 border-[#3D2008] flex-shrink-0 flex items-center justify-center mt-0.5">
+                <div className="w-1.5 h-1.5 bg-[#3D2008]" />
+              </div>
+              <span>
+                You need <strong>{fc(freedomNumber)}</strong> total saved. Once you hit that, your investments earn enough interest to cover your life forever — you never need to work again.
+              </span>
+            </li>
+            <li className="flex items-start gap-3 text-sm text-[#3D2008]">
+              <div className="w-5 h-5 bg-[#C8E6C9] border-2 border-[#3D2008] flex-shrink-0 flex items-center justify-center mt-0.5">
+                <div className="w-1.5 h-1.5 bg-[#3D2008]" />
+              </div>
+              <span>
+                {alreadyFree
+                  ? "You're already there! Your savings can cover your retirement right now."
+                  : projectedRetireAge
+                  ? <>At your current savings rate, you'll get there at <strong>age {projectedRetireAge}</strong> — that's <strong>{projectedRetireAge - inputs.currentAge} years from now</strong>.</>
+                  : "At your current savings rate, you won't reach it before age 80. You need to save more each month."}
+              </span>
+            </li>
+            <li className="flex items-start gap-3 text-sm text-[#3D2008]">
+              <div className="w-5 h-5 bg-[#BBDEFB] border-2 border-[#3D2008] flex-shrink-0 flex items-center justify-center mt-0.5">
+                <div className="w-1.5 h-1.5 bg-[#3D2008]" />
+              </div>
+              <span>
+                {onTrack
+                  ? <>You're on track! Keep saving <strong>{fa(inputs.monthlySavings)}/month</strong> and you'll hit your goal right on time.</>
+                  : <>To retire by <strong>{inputs.retirementAge}</strong>, aim to save <strong>{fa(requiredMonthlySavings)}/month</strong> — that's about <strong>{fa(Math.round(requiredMonthlySavings / 30))}/day</strong>.</>}
+              </span>
+            </li>
+            {results.debtImpactYears !== undefined && results.debtImpactYears > 0 && (
+              <li className="flex items-start gap-3 text-sm text-[#3D2008]">
+                <div className="w-5 h-5 bg-[#FFE0B2] border-2 border-[#3D2008] flex-shrink-0 flex items-center justify-center mt-0.5">
+                  <div className="w-1.5 h-1.5 bg-[#3D2008]" />
+                </div>
+                <span>
+                  Once you pay off your debts and redirect that money to savings, you could retire <strong>{results.debtImpactYears} year{results.debtImpactYears !== 1 ? 's' : ''} earlier</strong>.
+                </span>
+              </li>
+            )}
+          </ul>
         </div>
 
         {/* Status */}
@@ -127,7 +184,7 @@ export function ResultsPage({ inputs, currency, onReset }: ResultsPageProps) {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
             { icon: DollarSign, label: 'Aim to earn at least', value: fa(results.requiredAnnualIncome), sub: 'per year before taxes',        color: '#BBDEFB' },
-            { icon: TrendingUp, label: 'Save this per month',  value: fa(requiredMonthlySavings),       sub: 'to retire on time',              color: '#C8E6C9' },
+            { icon: TrendingUp, label: 'Save this per month', value: fa(requiredMonthlySavings), sub: `to retire on time · ${fa(Math.round(requiredMonthlySavings / 30))}/day`, color: '#C8E6C9' },
             { icon: Clock,      label: "Retire at age",        value: projectedRetireAge ? `${projectedRetireAge}` : '80+', sub: 'at your current pace', color: '#F4A7B9' },
           ].map(({ icon: Icon, label, value, sub, color }) => (
             <div key={label} className="bg-white border-4 border-[#3D2008] p-5" style={{ boxShadow: '4px 4px 0 #3D2008' }}>
@@ -145,13 +202,13 @@ export function ResultsPage({ inputs, currency, onReset }: ResultsPageProps) {
         <div className="bg-white border-4 border-[#3D2008] p-6" style={{ boxShadow: '4px 4px 0 #3D2008' }}>
           <h3 className="font-bold text-[#3D2008] mb-4 flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-[#C68B57]" />
-            Retirement age by investment return
+            When could you retire?
           </h3>
           <div className="space-y-3">
             {[
-              { label: `Conservative (${Math.max(3, moderateReturn - 2)}%)`, scenario: results.scenarios.conservative, color: '#F0D9C4' },
-              { label: `Moderate (${moderateReturn}%)`,                       scenario: results.scenarios.moderate,     color: '#F4A7B9' },
-              { label: `Aggressive (${Math.min(12, moderateReturn + 2)}%)`,   scenario: results.scenarios.aggressive,   color: '#C8E6C9' },
+              { label: 'Safe & steady', scenario: results.scenarios.conservative, color: '#F0D9C4' },
+              { label: 'Most likely',   scenario: results.scenarios.moderate,     color: '#F4A7B9' },
+              { label: 'Markets boom',  scenario: results.scenarios.aggressive,   color: '#C8E6C9' },
             ].map(({ label, scenario, color }) => {
               const age = scenario.retireAtAge
               return (
@@ -192,10 +249,25 @@ export function ResultsPage({ inputs, currency, onReset }: ResultsPageProps) {
 
         {/* Otter moment */}
         <div className="bg-[#F0D9C4] border-4 border-[#3D2008] p-5 flex items-center gap-5" style={{ boxShadow: '4px 4px 0 #3D2008' }}>
-          <PixelOtterStatic scale={1.4} />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={alreadyFree || onTrack ? '/happy.png' : '/shocked.png'}
+            alt={alreadyFree || onTrack ? 'happy otter' : 'shocked otter'}
+            width={90}
+            height={90}
+            style={{ imageRendering: 'pixelated', flexShrink: 0 }}
+          />
           <div>
-            <div className="font-pixel text-[10px] text-[#9B8578] tracking-widest uppercase mb-1">Remember</div>
-            <p className="text-sm font-semibold text-[#3D2008]">The best time to start was yesterday.<br />The second best time is right now.</p>
+            <div className="font-pixel text-[10px] text-[#9B8578] tracking-widest uppercase mb-1">
+              {alreadyFree ? 'You did it!' : onTrack ? 'Keep going!' : 'No worries!'}
+            </div>
+            <p className="text-sm font-semibold text-[#3D2008]">
+              {alreadyFree
+                ? "You're already financially free. Time to make a plan!"
+                : onTrack
+                ? "You're on track — the best time to stay consistent is now."
+                : 'The best time to start was yesterday.\nThe second best time is right now.'}
+            </p>
             <p className="text-xs text-[#9B8578] mt-1">Every dollar you save today is worth much more later thanks to compound growth.</p>
           </div>
         </div>

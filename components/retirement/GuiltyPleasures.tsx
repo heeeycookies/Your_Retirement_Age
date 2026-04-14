@@ -1,9 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { Coffee, Leaf, Target, UtensilsCrossed, ShoppingBag, Wine, Gamepad2, Dumbbell, Plus } from 'lucide-react'
+import { Coffee, Leaf, Target, UtensilsCrossed, ShoppingBag, Wine, Gamepad2, Dumbbell, Plus, Sparkles } from 'lucide-react'
 import { calcGuiltyPleasure, GuiltyPleasureFrequency } from '@/lib/calculations'
-import { Currency, formatAmount, formatCompact } from '@/lib/currency'
+import { Currency, formatAmount, formatCompact, getSymbol } from '@/lib/currency'
 
 interface Preset {
   name: string
@@ -15,13 +15,14 @@ interface Preset {
 
 const PRESETS: Preset[] = [
   { name: 'Daily Coffee',     icon: Coffee,          defaultAmount: 6,   frequency: 'daily',   color: '#F4A7B9' },
-  { name: 'Weekly Matcha',    icon: Leaf,            defaultAmount: 8,   frequency: 'weekly',  color: '#C8E6C9' },
-  { name: 'Monthly Golf',     icon: Target,          defaultAmount: 120, frequency: 'monthly', color: '#BBDEFB' },
-  { name: 'Weekly Takeout',   icon: UtensilsCrossed, defaultAmount: 25,  frequency: 'weekly',  color: '#FFE0B2' },
-  { name: 'Shopping Haul',    icon: ShoppingBag,     defaultAmount: 80,  frequency: 'monthly', color: '#E1BEE7' },
-  { name: 'Drinks Out',       icon: Wine,            defaultAmount: 35,  frequency: 'weekly',  color: '#FFF9C4' },
+  { name: 'Matcha / Tea',     icon: Leaf,            defaultAmount: 8,   frequency: 'daily',   color: '#C8E6C9' },
+  { name: 'Sports / Fitness', icon: Dumbbell,        defaultAmount: 80,  frequency: 'monthly', color: '#DCEDC8' },
+  { name: 'Golf',             icon: Target,          defaultAmount: 120, frequency: 'monthly', color: '#BBDEFB' },
+  { name: 'Eating Out',       icon: UtensilsCrossed, defaultAmount: 25,  frequency: 'weekly',  color: '#FFE0B2' },
+  { name: 'Shopping',         icon: ShoppingBag,     defaultAmount: 80,  frequency: 'monthly', color: '#E1BEE7' },
+  { name: 'Drinks / Nights',  icon: Wine,            defaultAmount: 35,  frequency: 'weekly',  color: '#FFF9C4' },
+  { name: 'Beauty / Spa',     icon: Sparkles,        defaultAmount: 60,  frequency: 'monthly', color: '#FCE4EC' },
   { name: 'Gaming / Subs',    icon: Gamepad2,        defaultAmount: 20,  frequency: 'monthly', color: '#B2EBF2' },
-  { name: 'Gym / Sports',     icon: Dumbbell,        defaultAmount: 60,  frequency: 'monthly', color: '#DCEDC8' },
 ]
 
 const FREQ_LABELS: Record<GuiltyPleasureFrequency, string> = {
@@ -39,6 +40,7 @@ interface GuiltyPleasuresProps {
 
 export function GuiltyPleasures({ freedomNumber, currentAge, retirementAge, currency }: GuiltyPleasuresProps) {
   const yearsToRetirement = Math.max(1, retirementAge - currentAge)
+  const sym = getSymbol(currency)
 
   const [activePreset, setActivePreset] = useState<string | null>(null)
   const [customName, setCustomName] = useState('')
@@ -123,7 +125,7 @@ export function GuiltyPleasures({ freedomNumber, currentAge, retirementAge, curr
             <div className="w-9 h-9 flex items-center justify-center border-2 border-[#3D2008] bg-[#FFF0E8]">
               <Plus className="w-4 h-4 text-[#3D2008]" strokeWidth={2.5} />
             </div>
-            <span className="text-[10px] font-bold text-[#3D2008] leading-tight">Your Thing</span>
+            <span className="text-[10px] font-bold text-[#3D2008] leading-tight">Others</span>
             <span className="text-[9px] text-[#9B8578]">custom</span>
           </button>
         </div>
@@ -149,10 +151,12 @@ export function GuiltyPleasures({ freedomNumber, currentAge, retirementAge, curr
 
               {/* Amount */}
               <div className="flex-1">
-                <label className="block text-xs font-bold text-[#3D2008] mb-1">How much each time?</label>
+                <label className="block text-xs font-bold text-[#3D2008] mb-1">
+                  How much each time? <span className="text-[#E879A0] font-normal">(edit to match yours)</span>
+                </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base font-bold text-[#9B8578]">
-                    {/* currency symbol will be shown via placeholder context */}
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base font-bold text-[#9B8578] pointer-events-none">
+                    {sym}
                   </span>
                   <input
                     type="number"
@@ -160,8 +164,8 @@ export function GuiltyPleasures({ freedomNumber, currentAge, retirementAge, curr
                     onChange={e => setAmount(e.target.value)}
                     placeholder="0"
                     min={0}
-                    className="w-full border-4 border-[#3D2008] bg-white text-[#3D2008] px-3 py-2 text-xl font-black outline-none"
-                    style={{ boxShadow: 'inset 2px 2px 0 #F0D9C4', appearance: 'none', MozAppearance: 'textfield' }}
+                    className="w-full border-4 border-[#3D2008] bg-white text-[#3D2008] pl-8 pr-3 py-2 text-xl font-black outline-none"
+                    style={{ boxShadow: 'inset 2px 2px 0 #F0D9C4', appearance: 'none', MozAppearance: 'textfield' as never }}
                   />
                 </div>
               </div>

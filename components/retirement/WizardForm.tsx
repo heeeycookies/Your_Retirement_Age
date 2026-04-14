@@ -1,11 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronRight, ChevronLeft, DollarSign, PiggyBank, ShoppingBag, TrendingUp, Calendar, BarChart2, Gift } from 'lucide-react'
+import { ChevronRight, ChevronLeft, DollarSign, PiggyBank, ShoppingBag, TrendingUp, Calendar, BarChart2, Gift, CreditCard, Landmark } from 'lucide-react'
 import { WizardInputs, CalculationMode } from '@/lib/calculations'
 import { Currency, getSymbol } from '@/lib/currency'
 import { PixelSlider } from '@/components/ui/PixelSlider'
-import { PixelOtterStatic } from './PixelOtter'
+
+// Otter images cycle through each step: serious → shocked → happy → repeat
+const STEP_OTTERS = ['/serious.png', '/shocked.png', '/happy.png'] as const
 
 interface WizardFormProps {
   mode: CalculationMode
@@ -131,6 +133,26 @@ const DETAILED_EXTRA_STEPS: StepDef[] = [
     ],
     validate: v => (v < 3 || v > 12) ? 'Enter between 3% and 12%.' : null,
   },
+  {
+    id: 'monthlyDebtPayments',
+    icon: CreditCard,
+    question: 'Do you have monthly debt repayments?',
+    hint: 'Student loans, car payments, credit cards — anything you pay off monthly. Enter 0 if debt-free.',
+    inputType: 'currency',
+    placeholder: '0',
+    min: 0,
+    validate: v => (isNaN(v) || v < 0) ? 'Enter 0 or more.' : null,
+  },
+  {
+    id: 'monthlyPensionIncome',
+    icon: Landmark,
+    question: 'Do you expect any pension or government payout at retirement?',
+    hint: "CPF Life, Social Security, company pension — any monthly income you'll receive at retirement that isn't from your own savings. Enter 0 if unsure.",
+    inputType: 'currency',
+    placeholder: '0',
+    min: 0,
+    validate: v => (isNaN(v) || v < 0) ? 'Enter 0 or more.' : null,
+  },
 ]
 
 export function WizardForm({ mode, currency, onComplete }: WizardFormProps) {
@@ -148,8 +170,9 @@ export function WizardForm({ mode, currency, onComplete }: WizardFormProps) {
   const [savingsErr, setSavingsErr]         = useState('')
   const [error, setError]                   = useState('')
 
-  const step    = STEPS[stepIdx]
-  const isLast  = stepIdx === STEPS.length - 1
+  const step      = STEPS[stepIdx]
+  const isLast    = stepIdx === STEPS.length - 1
+  const otterSrc  = STEP_OTTERS[stepIdx % 3]
   const isExpensesStep = step.id === 'monthlyExpenses'
   const sym     = getSymbol(currency)
 
@@ -198,6 +221,8 @@ export function WizardForm({ mode, currency, onComplete }: WizardFormProps) {
         annualSalaryGrowthPct:  mode === 'detailed' ? (sliderValues['annualSalaryGrowthPct'] ?? 3) : undefined,
         annualBonusLumpSum:     mode === 'detailed' ? (parseFloat(getVal('annualBonusLumpSum') || '0')) : undefined,
         expectedReturnPct:      mode === 'detailed' ? (sliderValues['expectedReturnPct'] ?? 7) : undefined,
+        monthlyDebtPayments:    mode === 'detailed' ? (parseFloat(getVal('monthlyDebtPayments') || '0')) : undefined,
+        monthlyPensionIncome:   mode === 'detailed' ? (parseFloat(getVal('monthlyPensionIncome') || '0')) : undefined,
       })
       return
     }
@@ -218,6 +243,23 @@ export function WizardForm({ mode, currency, onComplete }: WizardFormProps) {
         className="absolute inset-0 opacity-[0.03] pointer-events-none"
         style={{ backgroundImage: 'radial-gradient(circle, #3D2008 1px, transparent 1px)', backgroundSize: '24px 24px' }}
       />
+
+      {/* Otter background — changes every step */}
+      <div className="absolute bottom-0 right-0 pointer-events-none select-none z-0 overflow-hidden" style={{ width: 260, height: 260 }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          key={otterSrc}
+          src={otterSrc}
+          alt=""
+          width={260}
+          height={260}
+          style={{
+            imageRendering: 'pixelated',
+            opacity: 0.13,
+            display: 'block',
+          }}
+        />
+      </div>
 
       {/* Card */}
       <div
@@ -369,10 +411,6 @@ export function WizardForm({ mode, currency, onComplete }: WizardFormProps) {
         ))}
       </div>
 
-      {/* Otter corner decoration */}
-      <div className="fixed bottom-4 right-4 opacity-50 z-10 pointer-events-none">
-        <PixelOtterStatic scale={1.2} />
-      </div>
     </div>
   )
 }

@@ -15,6 +15,8 @@ export interface WizardInputs {
   annualSalaryGrowthPct?: number  // e.g. 3 → 3%/yr
   annualBonusLumpSum?: number     // extra one-time invest per year
   expectedReturnPct?: number      // overrides default 7% moderate scenario
+  monthlyDebtPayments?: number    // e.g. student loan, car, credit card
+  monthlyPensionIncome?: number   // CPF, pension, social security expected at retirement
 }
 
 export interface ProjectionRow {
@@ -35,6 +37,7 @@ export interface CalculationResults {
   requiredMonthlySavings: number
   requiredAnnualIncome: number
   projectedRetireAge: number | null
+  debtImpactYears?: number  // years earlier you'd retire if debt redirected to savings
   scenarios: {
     conservative: ScenarioResult
     moderate: ScenarioResult
@@ -45,9 +48,10 @@ export interface CalculationResults {
 // ── Core math ─────────────────────────────────────────────
 
 /** Freedom Number = 25× annual retirement spend (4% safe withdrawal rule).
- *  Retirement spend assumed at 80% of current monthly expenses. */
-export function getFreedomNumber(monthlyExpenses: number): number {
-  return monthlyExpenses * 12 * 0.8 * 25
+ *  Retirement spend assumed at 80% of current monthly expenses, minus any pension income. */
+export function getFreedomNumber(monthlyExpenses: number, monthlyPension = 0): number {
+  const netMonthly = Math.max(0, monthlyExpenses * 0.8 - monthlyPension)
+  return netMonthly * 12 * 25
 }
 
 function futureValue(
@@ -125,8 +129,10 @@ export function runCalculations(inputs: WizardInputs): CalculationResults {
     expectedReturnPct,
   } = inputs
 
+  const pensionIncome = inputs.monthlyPensionIncome ?? 0
+  const debtPayments = inputs.monthlyDebtPayments ?? 0
   const effectiveMonthly = monthlySavings + (annualBonusLumpSum / 12)
-  const freedomNumber = getFreedomNumber(monthlyExpenses)
+  const freedomNumber = getFreedomNumber(monthlyExpenses, pensionIncome)
   const yearsToGoal = retirementAge - currentAge
   const maxYears = Math.min(80 - currentAge, 55)
   const moderateReturn = expectedReturnPct ?? 7
@@ -142,12 +148,23 @@ export function runCalculations(inputs: WizardInputs): CalculationResults {
   const moderate = calcScenario(moderateReturn)
   const reqIncome = (moderate.requiredMonthlySavings + monthlyExpenses) * 12 / 0.7
 
+  // debt impact: how many years earlier if debt payments were redirected to savings
+  let debtImpactYears: number | undefined
+  if (debtPayments > 0) {
+    const withDebt    = yearsToTarget(currentSavings, effectiveMonthly, moderateReturn, freedomNumber, annualBonusLumpSum)
+    const withoutDebt = yearsToTarget(currentSavings, effectiveMonthly + debtPayments, moderateReturn, freedomNumber, annualBonusLumpSum)
+    if (withDebt !== null && withoutDebt !== null) {
+      debtImpactYears = Math.round((withDebt - withoutDebt) * 10) / 10
+    }
+  }
+
   return {
     freedomNumber,
     currentProgress: Math.min(100, (currentSavings / freedomNumber) * 100),
     requiredMonthlySavings: moderate.requiredMonthlySavings,
     requiredAnnualIncome: Math.max(annualIncome, reqIncome),
     projectedRetireAge: moderate.retireAtAge,
+    debtImpactYears,
     scenarios: {
       conservative: calcScenario(Math.max(3, moderateReturn - 2)),
       moderate,
